@@ -781,6 +781,18 @@ function bootIntoApp(fromPeerOpen){
 
 function init(){
   logEvent(`Экран: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio}, UA: ${navigator.userAgent}`);
+
+  // Принудительно зачищаем ЛЮБЫЕ старые service worker'ы и кэши от предыдущих версий сайта —
+  // они могли остаться зарегистрированными с ранних этапов разработки и подсовывать устаревший CSS/JS.
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(reg => { logEvent(`Удаляем старый service worker: ${reg.scope}`); reg.unregister(); });
+    });
+  }
+  if('caches' in window){
+    caches.keys().then(keys => keys.forEach(k => { logEvent(`Удаляем старый кэш: ${k}`); caches.delete(k); }));
+  }
+
   initOnboarding();
   initProfileModal();
   initAddFriendModal();
@@ -794,10 +806,9 @@ function init(){
   } else {
     showScreen('onboard');
   }
-
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
-  }
+  // Service worker больше НЕ регистрируем — слишком много проблем со старым кэшем на разных
+  // устройствах. Приложению всё равно нужен интернет постоянно (P2P), офлайн-режим не нужен.
+  // Старые SW от предыдущих версий сайта принудительно удаляются в блоке выше.
 }
 
 init();
