@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=yes, viewport-fit=cover">
+<title>Orbit — мессенджер без сервера</title>
+<meta name="theme-color" content="#0F1115">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orbit">
+<meta name="description" content="P2P мессенджер прямо в браузере: текст, голосовые, файлы и звонки без единой базы данных.">
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css?v=2">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<!-- ===== ЭКРАН ЗАГРУЗКИ ===== -->
+<div id="screen-boot" class="screen active">
+  <div class="boot-orbit">
+    <div class="boot-ring"></div>
+    <div class="boot-core"></div>
+  </div>
+  <p class="boot-text">Подключаемся к сети…</p>
+</div>
+
+<!-- ===== ЭКРАН ОНБОРДИНГА (создание профиля) ===== -->
+<div id="screen-onboard" class="screen">
+  <div class="onboard-card">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <h1>Orbit</h1>
+    </div>
+    <p class="onboard-sub">Мессенджер без сервера. Ваши данные живут только в этом браузере и передаются напрямую собеседнику.</p>
+
+    <label class="field-label">Ваш никнейм</label>
+    <input id="input-nickname" class="text-input" type="text" maxlength="24" placeholder="Например, Саша">
+
+    <label class="field-label">Аватар</label>
+    <div class="avatar-picker-row">
+      <div class="avatar-frame-wrap" id="onboard-avatar-wrap">
+        <svg class="avatar-frame-svg" id="onboard-frame-svg" viewBox="0 0 100 100"></svg>
+        <div class="avatar-circle" id="onboard-avatar-circle">
+          <span id="onboard-avatar-initial">?</span>
+        </div>
+      </div>
+      <div class="avatar-actions">
+        <button class="btn-ghost" id="btn-upload-avatar">Загрузить фото</button>
+        <input type="file" id="input-avatar-file" accept="image/*" hidden>
+        <button class="btn-ghost" id="btn-remove-avatar">Убрать фото</button>
+      </div>
+    </div>
+
+    <label class="field-label">Рамка аватара</label>
+    <div class="frame-swatches" id="onboard-frame-swatches"></div>
+
+    <button class="btn-primary" id="btn-create-profile">Создать профиль и войти</button>
+  </div>
+</div>
+
+<!-- ===== ГЛАВНЫЙ ЭКРАН ПРИЛОЖЕНИЯ ===== -->
+<div id="screen-app" class="screen">
+  <div class="app-shell">
+
+    <!-- ЛЕВАЯ ПАНЕЛЬ: список друзей -->
+    <aside class="panel-list" id="panel-list">
+      <header class="list-header">
+        <div class="my-id-badge" id="btn-open-profile">
+          <div class="avatar-frame-wrap sm" id="my-avatar-wrap">
+            <svg class="avatar-frame-svg" id="my-frame-svg" viewBox="0 0 100 100"></svg>
+            <div class="avatar-circle" id="my-avatar-circle"><span id="my-avatar-initial">?</span></div>
+          </div>
+          <div class="my-id-text">
+            <strong id="my-nickname-display">—</strong>
+            <span class="my-id-code" id="my-id-display">—</span>
+          </div>
+        </div>
+        <button class="icon-btn" id="btn-add-friend" title="Добавить друга">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <div class="friends-scroll" id="friends-list">
+        <!-- friend items injected -->
+      </div>
+
+      <div class="empty-friends" id="empty-friends">
+        <div class="empty-icon">🪐</div>
+        <p>Пока нет друзей.<br>Добавьте кого-то по ID.</p>
+        <button class="btn-primary sm" id="btn-add-friend-2">Добавить друга</button>
+      </div>
+    </aside>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ: чат -->
+    <main class="panel-chat" id="panel-chat">
+      <div class="chat-placeholder" id="chat-placeholder">
+        <div class="placeholder-orbit"><div class="boot-ring"></div><div class="boot-core"></div></div>
+        <p>Выберите чат слева или добавьте нового друга,<br>чтобы начать общение.</p>
+      </div>
+
+      <div class="chat-active" id="chat-active">
+        <header class="chat-header">
+          <button class="icon-btn only-mobile" id="btn-back-to-list">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="avatar-frame-wrap sm" id="chat-avatar-wrap">
+            <svg class="avatar-frame-svg" id="chat-frame-svg" viewBox="0 0 100 100"></svg>
+            <div class="avatar-circle" id="chat-avatar-circle"><span id="chat-avatar-initial">?</span></div>
+          </div>
+          <div class="chat-header-info">
+            <strong id="chat-header-name">—</strong>
+            <span class="status-line" id="chat-header-status">офлайн</span>
+          </div>
+          <div class="chat-header-actions">
+            <button class="icon-btn" id="btn-call-audio" title="Позвонить">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1L6.6 10.8z"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="messages-scroll" id="messages-scroll"></div>
+
+        <div class="composer">
+          <input type="file" id="input-attach-file" hidden>
+          <button class="icon-btn" id="btn-attach" title="Прикрепить файл">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M21 11.5l-9 9a4.2 4.2 0 01-6-6l9-9a2.8 2.8 0 014 4l-8.5 8.5a1.4 1.4 0 01-2-2L16 8"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-record-voice" title="Голосовое сообщение">
+            <svg viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          </button>
+          <textarea id="input-message" class="msg-input" placeholder="Написать сообщение…" rows="1"></textarea>
+          <button class="icon-btn send" id="btn-send-text" title="Отправить">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg>
+          </button>
+        </div>
+
+        <div class="voice-recording-bar" id="voice-recording-bar">
+          <span class="rec-dot"></span>
+          <span id="rec-timer">0:00</span>
+          <span class="rec-hint">Идёт запись…</span>
+          <button class="btn-ghost sm" id="btn-cancel-record">Отмена</button>
+          <button class="btn-primary sm" id="btn-stop-record">Отправить</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА: добавить друга ===== -->
+<div class="modal-overlay" id="modal-add-friend">
+  <div class="modal-card">
+    <h2>Добавить друга</h2>
+    <p class="modal-sub">Попросите друга прислать его ID из профиля и вставьте сюда.</p>
+    <input id="input-friend-id" class="text-input mono" type="text" placeholder="например, 7K2F9A">
+    <div id="add-friend-error" class="field-error"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btn-cancel-add-friend">Отмена</button>
+      <button class="btn-primary" id="btn-confirm-add-friend">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА: профиль / настройки ===== -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal-card">
+    <h2>Профиль</h2>
+
+    <label class="field-label">Ваш ID (дайте его друзьям)</label>
+    <div class="id-copy-row">
+      <span class="id-copy-code" id="profile-my-id">—</span>
+      <button class="btn-ghost sm" id="btn-copy-id">Скопировать</button>
+      <button class="btn-ghost sm" id="btn-share-id" hidden>Поделиться</button>
+    </div>
+
+    <label class="field-label">Никнейм</label>
+    <input id="input-nickname-edit" class="text-input" type="text" maxlength="24">
+
+    <label class="field-label">Аватар</label>
+    <div class="avatar-picker-row">
+      <div class="avatar-frame-wrap" id="profile-avatar-wrap">
+        <svg class="avatar-frame-svg" id="profile-frame-svg" viewBox="0 0 100 100"></svg>
+        <div class="avatar-circle" id="profile-avatar-circle"><span id="profile-avatar-initial">?</span></div>
+      </div>
+      <div class="avatar-actions">
+        <button class="btn-ghost" id="btn-upload-avatar-2">Загрузить фото</button>
+        <input type="file" id="input-avatar-file-2" accept="image/*" hidden>
+        <button class="btn-ghost" id="btn-remove-avatar-2">Убрать фото</button>
+      </div>
+    </div>
+
+    <label class="field-label">Рамка аватара</label>
+    <div class="frame-swatches" id="profile-frame-swatches"></div>
+
+    <div class="modal-actions" style="justify-content:space-between">
+      <button class="btn-ghost sm" id="btn-open-debug">🛠 Журнал</button>
+      <div style="display:flex; gap:10px">
+        <button class="btn-ghost" id="btn-close-profile">Закрыть</button>
+        <button class="btn-primary" id="btn-save-profile">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА: технический журнал ===== -->
+<div class="modal-overlay" id="modal-debug">
+  <div class="modal-card">
+    <h2>Технический журнал</h2>
+    <p class="modal-sub">Здесь видны все попытки подключения и ошибки — полезно, если что-то не работает. Можно скопировать и прислать для диагностики.</p>
+    <pre id="debug-log-text" style="background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:12px; font-family:var(--font-mono); font-size:11.5px; white-space:pre-wrap; word-break:break-word; max-height:40vh; overflow-y:auto; margin:0;"></pre>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btn-close-debug">Закрыть</button>
+      <button class="btn-primary" id="btn-copy-debug">Скопировать журнал</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ЗВОНОК ===== -->
+<div class="modal-overlay" id="modal-call">
+  <div class="call-card">
+    <div class="avatar-frame-wrap lg" id="call-avatar-wrap">
+      <svg class="avatar-frame-svg" id="call-frame-svg" viewBox="0 0 100 100"></svg>
+      <div class="avatar-circle" id="call-avatar-circle"><span id="call-avatar-initial">?</span></div>
+    </div>
+    <h2 id="call-peer-name">—</h2>
+    <p id="call-status">Звонок…</p>
+    <div class="call-actions">
+      <button class="call-btn decline" id="btn-decline-call" title="Отклонить">
+        <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" transform="rotate(135 12 12)" d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1L6.6 10.8z"/></svg>
+      </button>
+      <button class="call-btn accept" id="btn-accept-call" title="Принять">
+        <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1L6.6 10.8z"/></svg>
+      </button>
+      <button class="call-btn mute" id="btn-mute-call" title="Микрофон">
+        <svg viewBox="0 0 24 24" width="22" height="22"><rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <button class="call-btn hangup" id="btn-hangup-call" title="Завершить">
+        <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" transform="rotate(135 12 12)" d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1L6.6 10.8z"/></svg>
+      </button>
+    </div>
+    <audio id="remote-audio" autoplay></audio>
+  </div>
+</div>
+
+<div class="toast-stack" id="toast-stack"></div>
+
+<script src="app.js?v=2"></script>
+</body>
+</html>
