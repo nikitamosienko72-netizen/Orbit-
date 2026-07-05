@@ -99,8 +99,14 @@ let mediaRecorder = null, recordedChunks = [], recordStartTime = 0, recordTimerI
 // DOM REFS
 // ---------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
-const screens = { boot: $('screen-boot'), onboard: $('screen-onboard'), app: $('screen-app') };
+const screens = { boot: $('screen-boot'), onboard: $('screen-onboard'), app: $('screen-app'), blocked: $('screen-blocked') };
 function showScreen(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+
+// Определяем телефон по User-Agent (не по ширине окна — иначе можно обойти,
+// просто сузив окно браузера на компьютере). iPad и десктопы сюда не попадают.
+function isPhoneDevice(){
+  return /iPhone|iPod|Android.*Mobile|Windows Phone|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent);
+}
 
 // ---------------------------------------------------------------------
 // AVATAR RENDER HELPER
@@ -516,6 +522,7 @@ function applyResponsiveMode(){
       chatEl.style.transform = 'translateX(0)';
     } else {
       listEl.style.display = 'flex';
+      chatEl.style.display = 'none';
       chatEl.style.transform = 'translateX(100%)';
     }
   } else {
@@ -819,6 +826,11 @@ function bootIntoApp(fromPeerOpen){
 }
 
 function init(){
+  if(!isPhoneDevice()){
+    showScreen('blocked');
+    return; // дальше вообще ничего не инициализируем на не-телефонах
+  }
+
   logEvent(`Экран: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio}, UA: ${navigator.userAgent}`);
 
   // Принудительно зачищаем ЛЮБЫЕ старые service worker'ы и кэши от предыдущих версий сайта —
