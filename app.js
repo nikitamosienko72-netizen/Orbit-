@@ -497,6 +497,41 @@ function previewForMessage(m){
 // ======================================================================
 // CHAT UI
 // ======================================================================
+function isMobileViewport(){ return window.innerWidth <= 780; }
+
+// Переключение раскладки список/чат через ПРЯМЫЕ инлайн-стили — работает
+// гарантированно, даже если CSS-файл со страницы почему-то не применился/устарел.
+function applyResponsiveMode(){
+  const listEl = $('panel-list'), chatEl = $('panel-chat'), backBtn = $('btn-back-to-list');
+  if(isMobileViewport()){
+    listEl.style.width = '100%';
+    listEl.style.borderRight = 'none';
+    chatEl.style.position = 'absolute';
+    chatEl.style.left = '0'; chatEl.style.top = '0'; chatEl.style.right = '0'; chatEl.style.bottom = '0';
+    chatEl.style.transition = 'transform .2s ease';
+    backBtn.style.display = 'flex';
+    if(activeChatId){
+      listEl.style.display = 'none';
+      chatEl.style.display = 'flex';
+      chatEl.style.transform = 'translateX(0)';
+    } else {
+      listEl.style.display = 'flex';
+      chatEl.style.transform = 'translateX(100%)';
+    }
+  } else {
+    listEl.style.width = '';
+    listEl.style.borderRight = '';
+    listEl.style.display = '';
+    chatEl.style.position = '';
+    chatEl.style.left = ''; chatEl.style.top = ''; chatEl.style.right = ''; chatEl.style.bottom = '';
+    chatEl.style.transform = '';
+    chatEl.style.display = '';
+    backBtn.style.display = '';
+  }
+}
+window.addEventListener('resize', applyResponsiveMode);
+window.addEventListener('orientationchange', applyResponsiveMode);
+
 function openChat(id){
   activeChatId = id;
   if(friends[id]){ friends[id].unread = 0; saveFriends(friends); }
@@ -508,12 +543,15 @@ function openChat(id){
   // mobile: показать чат-панель
   $('panel-list').classList.add('hide-mobile');
   $('panel-chat').classList.add('show-mobile');
+  applyResponsiveMode();
   ensureConnected(id);
 }
 
 $('btn-back-to-list') && $('btn-back-to-list').addEventListener('click', () => {
   $('panel-list').classList.remove('hide-mobile');
   $('panel-chat').classList.remove('show-mobile');
+  activeChatId = null;
+  applyResponsiveMode();
 });
 
 function renderChatHeader(f){
@@ -775,6 +813,7 @@ function initCallControls(){
 // ======================================================================
 function bootIntoApp(fromPeerOpen){
   renderMyBadge();
+  applyResponsiveMode();
   renderFriendsList();
   showScreen('app');
 }
@@ -799,6 +838,7 @@ function init(){
   initComposer();
   initVoiceRecording();
   initCallControls();
+  applyResponsiveMode();
 
   if(profile && profile.id && profile.nickname){
     showScreen('boot');
